@@ -238,6 +238,7 @@ async function reStake(stakingId) {
   if (walletAddress) {
     try {
       const signer = provider.getSigner();
+      showNotification("Restaking, please don't close the window. This may take a while.");
       const contract = new ethers.Contract(contractAddress, abi, signer);
       await contract.reStake(stakingId);
       showNotification("Restaked successfully");
