@@ -1,4 +1,3 @@
-var web3;
 var walletAddress;
 var form__1 = document.getElementById("form__1");
 var form__2 = document.getElementById("form__2");
@@ -6,8 +5,7 @@ var form__3 = document.getElementById("form__3");
 var BALANCE;
 let provider;
 
-const weiToEther = (value) =>
-  Number(ethers.utils.formatEther(value)).toFixed(2);
+const weiToEther = (value) => Number(ethers.utils.formatEther(value)).toFixed(2);
 const etherToWei = (value) => ethers.utils.parseEther(value.toString());
 
 function showNotification(message) {
@@ -31,25 +29,25 @@ function tnxNotification(message) {
 }
 
 document.addEventListener("DOMContentLoaded", async function () {
-  // Your code here
   await Connect();
 });
 
 async function Connect() {
   if (typeof window.ethereum !== "undefined") {
     try {
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      web3 = new Web3(window.ethereum);
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
 
-      const networkId = await web3.eth.net.getId();
-      // 841
-      if (networkId !== 97) {
-        showNotification("Please switch to Taraxa Mainnet.");
+      const signer = provider.getSigner();
+      walletAddress = await signer.getAddress();
+
+      const network = await provider.getNetwork();
+      // Check for BSC testnet (networkId 97)
+      if (network.chainId !== 97) {
+        showNotification("Please switch to Bsc Testnet.");
         return;
       }
 
-      const accounts = await web3.eth.getAccounts();
-      walletAddress = accounts[0];
       await Total(walletAddress);
       await getUserTokenBalance(walletAddress);
       await userData(walletAddress);
@@ -59,8 +57,6 @@ async function Connect() {
 
       const buttonText = document.getElementById("buttonText");
       buttonText.innerText = shortenAddress(walletAddress);
-
-      // document.getElementById("connectButton").disabled = true;
     } catch (error) {
       console.error("Error connecting to wallet:", error);
     }
@@ -69,7 +65,7 @@ async function Connect() {
   }
 }
 
-//HANDLE FORM SUBMISSION
+// HANDLE FORM SUBMISSION
 form__1.addEventListener("submit", async function (event) {
   event.preventDefault();
   if (!walletAddress) {
@@ -77,13 +73,11 @@ form__1.addEventListener("submit", async function (event) {
     return;
   }
 
-  // alert(BALANCE)
-
   const stakingId = 0;
   const amount = document.getElementById("amount__1").value;
 
   if (amount < 100) {
-    showNotification("Amount must be greater than 100 ");
+    showNotification("Amount must be greater than 100");
     return;
   }
   if (Number(BALANCE) < Number(amount)) {
@@ -163,224 +157,49 @@ async function userData(address) {
     return;
   }
   try {
-    const contract = new web3.eth.Contract(abi, contractAddress);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, abi, signer);
 
-    // PLAN STAKED
+    const stakeA = await contract.canWithdrawAmount(0, address);
+    const stakeB = await contract.canWithdrawAmount(1, address);
+    const stakeC = await contract.canWithdrawAmount(2, address);
 
-    const stakeA = await contract.methods.canWithdrawAmount(0, address).call();
-    const stakeB = await contract.methods.canWithdrawAmount(1, address).call();
-    const stakeC = await contract.methods.canWithdrawAmount(2, address).call();
+    document.getElementById("planAStake").innerText = weiToEther(stakeA[0]);
+    document.getElementById("planA1Stake").innerText = weiToEther(stakeA[0]);
+    document.getElementById("planBStake").innerText = weiToEther(stakeB[0]);
+    document.getElementById("planB2Stake").innerText = weiToEther(stakeB[0]);
+    document.getElementById("planCStake").innerText = weiToEther(stakeC[0]);
+    document.getElementById("planC3Stake").innerText = weiToEther(stakeC[0]);
 
-    const planAStake = document.getElementById("planAStake");
-    planAStake.innerText = weiToEther(stakeA[0]);
-    const planA1Stake = document.getElementById("planA1Stake");
-    planA1Stake.innerText = weiToEther(stakeA[0]);
+    const planA = await contract.earnedToken(0, address);
+    const planB = await contract.earnedToken(1, address);
+    const planC = await contract.earnedToken(2, address);
 
-    const planBStake = document.getElementById("planBStake");
-    planBStake.innerText = weiToEther(stakeB[0]);
-
-    const planB2Stake = document.getElementById("planB2Stake");
-    planB2Stake.innerText = weiToEther(stakeB[0]);
-
-    const planCStake = document.getElementById("planCStake");
-    planCStake.innerText = weiToEther(stakeC[0]);
-
-    const planC3Stake = document.getElementById("planC3Stake");
-    planC3Stake.innerText = weiToEther(stakeC[0]);
-
-    // Plan Rewards
-
-    // Call the totalRewards method of your contract
-    const planA = await contract.methods.earnedToken(0, address).call();
-    const planB = await contract.methods.earnedToken(1, address).call();
-    const planC = await contract.methods.earnedToken(2, address).call();
-
-    const planAButton = document.getElementById("planA");
-    planAButton.innerText = weiToEther(planA);
-    const planBButton = document.getElementById("planB");
-    planBButton.innerText = weiToEther(planB);
-    const planCButton = document.getElementById("planC");
-    planCButton.innerText = weiToEther(planC);
+    document.getElementById("planA").innerText = weiToEther(planA);
+    document.getElementById("planB").innerText = weiToEther(planB);
+    document.getElementById("planC").innerText = weiToEther(planC);
   } catch (e) {
     console.log(e);
     showNotification("Error fetching user data");
   }
 }
 
-// async function unStake(stakingId) {
-//   if (walletAddress) {
-//     try {
-//       const amount = document.getElementById("planAStake").innerText;
-//       console.log("Raw amount:", amount); // Debug log
-
-//       // Parse the amount to a float
-//       const originalAmount = parseFloat(amount);
-//       const fee = originalAmount * 0.01;
-//       const adjustedAmount = originalAmount - fee;
-//       console.log("Adjusted amount:", adjustedAmount); // Debug log
-
-//       // Convert adjusted amount to a string with a fixed number of decimals (up to 18)
-//       const adjustedAmountStr = adjustedAmount.toFixed(18);
-
-//       // Convert to Wei using ethers.js
-//       const weiValue = ethers.utils.parseEther(adjustedAmountStr);
-
-//       const contract = new web3.eth.Contract(abi, contractAddress);
-
-//       // Log method and parameters
-
-// 	  showNotification("Transaction sent to wallet,please confirm...")
-
-//       await contract.methods
-//         .unstake(stakingId, weiValue.toString())
-//         .send({ from: walletAddress, gas: 200000 })
-//         .on("transactionHash", function (hash) {
-//           console.log("Transaction hash:", hash);
-//         })
-//         .on("confirmation", function (confirmationNumber, receipt) {
-//           console.log(
-//             "Confirmation number:",
-//             confirmationNumber,
-//             "Receipt:",
-//             receipt
-//           );
-//         })
-//         .on("receipt", function (receipt) {
-//           console.log("Receipt:", receipt);
-//           tnxNotification("Unstaked successfully");
-//         })
-//         .on("error", function (error, receipt) {
-//           console.error("Transaction error:", error, "Receipt:", receipt);
-//           tnxNotification("Error unstaking");
-//         });
-
-//       await Total(walletAddress);
-//       await getUserTokenBalance(walletAddress);
-//       await userData(walletAddress);
-//     } catch (err) {
-//       console.error("Error unstaking:", err);
-//       if (err.data) {
-//         console.error("Error data:", err.data);
-//       }
-//       tnxNotification("Error unstaking");
-//     }
-//   } else {
-//     showNotification("Please connect your wallet first");
-//   }
-// }
-
-async function unStakeA(stakingId) {
+async function unStake(stakingId, planId) {
   if (walletAddress) {
     try {
-      const amount = document.getElementById("planAStake").innerText;
-      console.log("Raw amount:", amount); // Debug log
+      const amount = document.getElementById(planId).innerText;
       if (amount <= 0) {
         showNotification("You have no stake in this plan");
         return;
       }
 
-      // Parse the amount to a float
-      const originalAmount = parseFloat(amount);
-      const fee = originalAmount * 0.001;
-      const adjustedAmount = originalAmount - fee;
-
-      // Convert adjusted amount to a string with a fixed number of decimals (up to 18)
-      const adjustedAmountStr = adjustedAmount.toFixed(18);
-
-      // Convert to Wei using ethers.js
+      const adjustedAmountStr = (parseFloat(amount) - parseFloat(amount) * 0.001).toFixed(18);
       const weiValue = ethers.utils.parseEther(adjustedAmountStr);
 
-      console.log(weiValue.toString());
-
-      tnxNotification("Transaction sent to wallet,please confirm...");
-      const contract = new web3.eth.Contract(abi, contractAddress);
-      await contract.methods
-        .unstake(stakingId, weiValue.toString())
-        .send({ from: walletAddress });
-
-      showNotification("Unstaked successfully");
-      await Total(walletAddress);
-      await getUserTokenBalance(walletAddress);
-      await userData(walletAddress);
-    } catch (err) {
-      console.error("Error unstaking:", err);
-      tnxNotification("Error unstaking");
-    }
-  } else {
-    showNotification("Please connect your wallet first");
-  }
-}
-
-async function unStakeB(stakingId) {
-  if (walletAddress) {
-    try {
-      const amount = document.getElementById("planBStake").innerText;
-      console.log("Raw amount:", amount); // Debug log
-      if (amount <= 0) {
-        showNotification("You have no stake in this plan");
-        return;
-      }
-
-      // Parse the amount to a float
-      const originalAmount = parseFloat(amount);
-      const fee = originalAmount * 0.001;
-      const adjustedAmount = originalAmount - fee;
-
-      // Convert adjusted amount to a string with a fixed number of decimals (up to 18)
-      const adjustedAmountStr = adjustedAmount.toFixed(18);
-
-      // Convert to Wei using ethers.js
-      const weiValue = ethers.utils.parseEther(adjustedAmountStr);
-
-      console.log(weiValue.toString());
-
-      tnxNotification("Transaction sent to wallet,please confirm...");
-      const contract = new web3.eth.Contract(abi, contractAddress);
-      await contract.methods
-        .unstake(stakingId, weiValue.toString())
-        .send({ from: walletAddress });
-
-      showNotification("Unstaked successfully");
-      await Total(walletAddress);
-      await getUserTokenBalance(walletAddress);
-      await userData(walletAddress);
-    } catch (err) {
-      console.error("Error unstaking:", err);
-      tnxNotification("Error unstaking");
-    }
-  } else {
-    showNotification("Please connect your wallet first");
-  }
-}
-
-async function unStakeC(stakingId) {
-  if (walletAddress) {
-    try {
-      const amount = document.getElementById("planCStake").innerText;
-      console.log("Raw amount:", amount); // Debug log
-      if (amount <= 0) {
-        showNotification("You have no stake in this plan");
-        return;
-      }
-
-      // Parse the amount to a float
-      const originalAmount = parseFloat(amount);
-      const fee = originalAmount * 0.001;
-      const adjustedAmount = originalAmount - fee;
-
-      // Convert adjusted amount to a string with a fixed number of decimals (up to 18)
-      const adjustedAmountStr = adjustedAmount.toFixed(18);
-
-      // Convert to Wei using ethers.js
-      const weiValue = ethers.utils.parseEther(adjustedAmountStr);
-
-      console.log(weiValue.toString());
-
-      tnxNotification("Transaction sent to wallet,please confirm...");
-      const contract = new web3.eth.Contract(abi, contractAddress);
-      await contract.methods
-        .unstake(stakingId, weiValue.toString())
-        .send({ from: walletAddress });
+      tnxNotification("Transaction sent to wallet, please confirm...");
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+      await contract.unstake(stakingId, weiValue);
 
       showNotification("Unstaked successfully");
       await Total(walletAddress);
@@ -398,8 +217,9 @@ async function unStakeC(stakingId) {
 async function reStake(stakingId) {
   if (walletAddress) {
     try {
-      const contract = new web3.eth.Contract(abi, contractAddress);
-      await contract.methods.reStake(stakingId).send({ from: walletAddress });
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+      await contract.reStake(stakingId);
       showNotification("Restaked successfully");
       await Total(walletAddress);
       await getUserTokenBalance(walletAddress);
@@ -416,13 +236,10 @@ async function reStake(stakingId) {
 async function withdraw(stakingId) {
   if (walletAddress) {
     try {
-      showNotification(
-        "Withdrawing, please dont close the window. This may take a while."
-      );
-      const contract = new web3.eth.Contract(abi, contractAddress);
-      await contract.methods
-        .claimEarned(stakingId)
-        .send({ from: walletAddress });
+      showNotification("Withdrawing, please don't close the window. This may take a while.");
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+      await contract.claimEarned(stakingId);
       showNotification("Claimed successfully");
       await Total(walletAddress);
       await getUserTokenBalance(walletAddress);
@@ -439,69 +256,75 @@ async function withdraw(stakingId) {
 async function approveSpendingCap(amount, stakingId) {
   if (walletAddress) {
     try {
-      const TokenContract = new web3.eth.Contract(tokenAbi, tokenContract);
-      const amountInWei = web3.utils.toWei(amount);
+      const signer = provider.getSigner();
+      const TokenContract = new ethers.Contract(tokenContract, tokenAbi, signer);
+      const amountInWei = ethers.utils.parseEther(amount);
 
-      tnxNotification(
-        "Approving spending cap, please dont close the window. This may take a while."
-      );
-      const approval = await TokenContract.methods
-        .approve(contractAddress, amountInWei)
-        .send({ from: walletAddress });
-      // approval.wait();
+      tnxNotification("Approving spending cap, please don't close the window. This may take a while.");
+     const spendingTnx = await TokenContract.approve(contractAddress, amountInWei);
+     await spendingTnx.wait();
+      showNotification("Spending cap approved");
 
-      showNotification(
-        "Transaction has been sent to your wallet. Please confirm the transaction."
-      );
-
-      const stakingContract = new web3.eth.Contract(abi, contractAddress);
-      // const stakingId = 1;
-      await stakingContract.methods
-        .stake(stakingId, amountInWei)
-        .send({ from: walletAddress });
-
+      showNotification("Staking in process, please don't close the window. This may take a while.");
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+     const tnx = await contract.stake(stakingId, amountInWei);
+     await tnx.wait();
       showNotification("Staked successfully");
+      await Total(walletAddress);
+      await getUserTokenBalance(walletAddress);
+      await userData(walletAddress);
+
     } catch (err) {
       console.error("Error approving spending cap:", err);
-      showNotification("Error approving spending cap");
+      tnxNotification("Error approving spending cap");
     }
   } else {
     showNotification("Please connect your wallet first");
   }
 }
 
-//GET USER STAKES
-
 async function getUserStakes(address) {
-  const contract = new web3.eth.Contract(abi, contractAddress);
-  const stakes = await contract.methods.getUserStakes(address).call();
-  return weiToEther(stakes);
-}
+  try {
+    // Create a contract instance using ethers.js
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, abi, signer);
 
+    // Fetch the user's stakes from the contract
+    const stakes = await contract.getUserStakes(address);
+
+    // Convert the stake amount from wei to ether
+    return ethers.utils.formatEther(stakes);
+  } catch (error) {
+    console.error("Error fetching user stakes:", error);
+    return 0; // Handle error gracefully
+  }
+}
 async function Total(address) {
   try {
-    // Check if web3 is defined
-    if (!web3) {
-      console.error("Web3 is not initialized.");
-      return;
-    }
+    // Check if ethers is initialized by checking if a provider exists
+    const signer = provider.getSigner();
+    // Create a contract instance using ethers.js
+    const contract = new ethers.Contract(contractAddress, abi, signer);
 
-    // Create a contract instance
-    const contract = new web3.eth.Contract(abi, contractAddress);
+    // Fetch the total balance and stakable amounts from the contract
+    const total = await contract.getBalance();
+    const stake1 = await contract.canWithdrawAmount(0, address);
+    const stake2 = await contract.canWithdrawAmount(1, address);
+    const stake3 = await contract.canWithdrawAmount(2, address);
 
-    // Call the totalRewards method of your contract
-    const total = await contract.methods.getBalance().call();
-    const stake1 = await contract.methods.canWithdrawAmount(1, address).call();
-    const stake2 = await contract.methods.canWithdrawAmount(2, address).call();
-    const stake3 = await contract.methods.canWithdrawAmount(3, address).call();
+    // Convert the values from BigNumber and calculate user's total stakable amount
+    let userTotal =
+      BigInt(stake1[0]) + BigInt(stake2[0]) + BigInt(stake3[0]);
 
-    let userTotal = stake2[0] + stake3[0] + stake1[0];
+      
 
-    const button = document.getElementById("totalTokenStaked");
-    button.innerText = weiToEther(total);
+    // Update the total staked tokens on the UI
+    const totalTokenStakedButton = document.getElementById("totalTokenStaked");
+    totalTokenStakedButton.innerText = ethers.utils.formatEther(total);
 
-    const user = document.getElementById("userTotal");
-    user.innerText = weiToEther(userTotal);
+    // Update the user's total stakable amount on the UI
+    const userTotalElement = document.getElementById("userTotal");
+    userTotalElement.innerText = ethers.utils.formatEther(userTotal.toString());
   } catch (error) {
     console.error("Error fetching total rewards:", error);
   }
@@ -509,12 +332,16 @@ async function Total(address) {
 
 async function getUserTokenBalance(address) {
   try {
-    const contract = new web3.eth.Contract(tokenAbi, tokenContract);
+    const signer = provider.getSigner();
+    const tokwn = new ethers.Contract(tokenContract, St, signer);
 
-    const balanceWei = await contract.methods.balanceOf(address).call();
-    const balanceEth = weiToEther(balanceWei);
+    const balanceWei = await tokwn.balanceOf(address);
+
+
+    const balanceEth = ethers.utils.formatEther(balanceWei);
 
     updateUserBalanceDisplay(balanceEth);
+
     BALANCE = balanceEth;
   } catch (error) {
     console.error("Error fetching user token balance:", error);
@@ -522,14 +349,20 @@ async function getUserTokenBalance(address) {
 }
 
 function updateUserBalanceDisplay(balance) {
+  // Get all elements with the class 'userBalance'
   const balanceElements = document.getElementsByClassName("userBalance");
 
+  // Iterate over each element and update the inner HTML with the user's balance
   Array.from(balanceElements).forEach((element) => {
     if (element) {
       element.innerHTML = balance;
     }
   });
 }
+
+
+
+
 
 function shortenAddress(address) {
   if (address.length <= 9) {
@@ -844,173 +677,69 @@ const abi = [
 ];
 const tokenContract = "0x99B760c287249cE2194Bd96423F70eB53edCA3cb";
 const tokenAbi = [
-  { inputs: [], stateMutability: "nonpayable", type: "constructor" },
   {
-    inputs: [
-      { internalType: "address", name: "spender", type: "address" },
-      { internalType: "uint256", name: "allowance", type: "uint256" },
-      { internalType: "uint256", name: "needed", type: "uint256" },
-    ],
-    name: "ERC20InsufficientAllowance",
-    type: "error",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "sender", type: "address" },
-      { internalType: "uint256", name: "balance", type: "uint256" },
-      { internalType: "uint256", name: "needed", type: "uint256" },
-    ],
-    name: "ERC20InsufficientBalance",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "address", name: "approver", type: "address" }],
-    name: "ERC20InvalidApprover",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "address", name: "receiver", type: "address" }],
-    name: "ERC20InvalidReceiver",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "address", name: "sender", type: "address" }],
-    name: "ERC20InvalidSender",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "address", name: "spender", type: "address" }],
-    name: "ERC20InvalidSpender",
-    type: "error",
-  },
-  {
-    anonymous: false,
-    inputs: [
+    "constant": true,
+    "inputs": [
       {
-        indexed: true,
-        internalType: "address",
-        name: "owner",
-        type: "address",
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "balanceOf",
+    "outputs": [
+      {
+        "name": "balance",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address"
       },
       {
-        indexed: true,
-        internalType: "address",
-        name: "spender",
-        type: "address",
-      },
+        "name": "value",
+        "type": "uint256"
+      }
+    ],
+    "name": "approve",
+    "outputs": [
       {
-        indexed: false,
-        internalType: "uint256",
-        name: "value",
-        type: "uint256",
-      },
+        "name": "success",
+        "type": "bool"
+      }
     ],
-    name: "Approval",
-    type: "event",
-  },
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
+
+
+const St = [
   {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "from", type: "address" },
-      { indexed: true, internalType: "address", name: "to", type: "address" },
+    "constant": true,
+    "inputs": [
       {
-        indexed: false,
-        internalType: "uint256",
-        name: "value",
-        type: "uint256",
-      },
+        "name": "owner",
+        "type": "address"
+      }
     ],
-    name: "Transfer",
-    type: "event",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "owner", type: "address" },
-      { internalType: "address", name: "spender", type: "address" },
+    "name": "balanceOf",
+    "outputs": [
+      {
+        "name": "balance",
+        "type": "uint256"
+      }
     ],
-    name: "allowance",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "spender", type: "address" },
-      { internalType: "uint256", name: "value", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "address", name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "address", name: "", type: "address" }],
-    name: "exclidedFromTax",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "name",
-    outputs: [{ internalType: "string", name: "", type: "string" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "owner",
-    outputs: [{ internalType: "address", name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "symbol",
-    outputs: [{ internalType: "string", name: "", type: "string" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "totalSupply",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "recipient", type: "address" },
-      { internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "transfer",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "from", type: "address" },
-      { internalType: "address", name: "to", type: "address" },
-      { internalType: "uint256", name: "value", type: "uint256" },
-    ],
-    name: "transferFrom",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-];
+    "type": "function"
+  }
+]
+
+
