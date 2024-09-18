@@ -63,7 +63,7 @@ async function Connect() {
 
       const network = await provider.getNetwork();
       // Check for BSC testnet (networkId 97)
-      if (network.chainId !== 97) {
+      if (network.chainId !== 11155111) {
         showNotification("Please switch to Bsc Testnet.");
         return;
       }
@@ -403,7 +403,7 @@ function smShortenAddress(address) {
   return `${firstFour}...${lastFive}`;
 }
 
-const contractAddress = "0x4D02920C644D2c7DC841003ebCc4213608A2bDdA";
+const contractAddress = "0xefc86ED17cD8740503b4ffEDcF4429ae98e9110E";
 const abi = [
   {
     inputs: [
@@ -696,7 +696,7 @@ const abi = [
   },
   { stateMutability: "payable", type: "receive" },
 ];
-const tokenContract = "0x99B760c287249cE2194Bd96423F70eB53edCA3cb";
+const tokenContract = "0x29c18373aA68Bf94301b5C11E4ddbd47181FC438";
 const tokenAbi = [
   {
     "constant": true,
