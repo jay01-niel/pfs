@@ -64,7 +64,7 @@ async function Connect() {
       const network = await provider.getNetwork();
       // Check for BSC testnet (networkId 97)
       if (network.chainId !== 11155111) {
-        showNotification("Please switch to Bsc Testnet.");
+        showNotification("Please switch to sepolia eth.");
         return;
       }
 
