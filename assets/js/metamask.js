@@ -8,6 +8,26 @@ let provider;
 const weiToEther = (value) => Number(ethers.utils.formatEther(value)).toFixed(2);
 const etherToWei = (value) => ethers.utils.parseEther(value.toString());
 
+function formatNumber(value) {
+  // Define the thresholds for thousands, millions, and billions
+  const thresholds = {
+    billion: 1e9,   // 1 billion
+    million: 1e6,   // 1 million
+    thousand: 1e3   // 1 thousand
+  };
+
+  // Check and format the value based on the thresholds
+  if (value >= thresholds.billion) {
+    return (value / thresholds.billion).toFixed(2) + ' Billion';
+  } else if (value >= thresholds.million) {
+    return (value / thresholds.million).toFixed(2) + ' Million';
+  } else if (value >= thresholds.thousand) {
+    return (value / thresholds.thousand).toFixed(2) + ' Thousand';
+  } else {
+    return value.toFixed(2); // If less than 1,000, just return the number with 2 decimal places
+  }
+}
+
 function showNotification(message) {
   const notification = document.getElementById("notification");
   notification.innerText = message;
@@ -320,11 +340,11 @@ async function Total(address) {
 
     // Update the total staked tokens on the UI
     const totalTokenStakedButton = document.getElementById("totalTokenStaked");
-    totalTokenStakedButton.innerText = ethers.utils.formatEther(total);
+    totalTokenStakedButton.innerText = formatNumber(ethers.utils.formatEther(total));
 
     // Update the user's total stakable amount on the UI
     const userTotalElement = document.getElementById("userTotal");
-    userTotalElement.innerText = ethers.utils.formatEther(userTotal.toString());
+    userTotalElement.innerText = formatNumber(ethers.utils.formatEther(userTotal.toString()));
   } catch (error) {
     console.error("Error fetching total rewards:", error);
   }
